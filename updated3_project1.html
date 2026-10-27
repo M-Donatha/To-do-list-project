@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>To-Do List with Desktop Notifications</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f9;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            width: 350px;
+        }
+        h2 {
+            margin-top: 0;
+            color: #333;
+            text-align: center;
+        }
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        .inputs-row {
+            display: flex;
+            gap: 5px;
+        }
+        input[type="text"] {
+            flex: 2;
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            outline: none;
+        }
+        input[type="time"] {
+            flex: 1;
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        .add-btn {
+            padding: 10px;
+            background-color: #28a745;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            width: 100%;
+            font-weight: bold;
+        }
+        .add-btn:hover {
+            background-color: #218838;
+        }
+        ul {
+            list-style-type: none;
+            padding: 0;
+            margin: 0;
+        }
+        li {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 8px;
+            border-bottom: 1px solid #eee;
+        }
+        .task-info {
+            display: flex;
+            flex-direction: column;
+        }
+        .reminder-time {
+            font-size: 11px;
+            color: #ff6b6b;
+            margin-top: 2px;
+        }
+        li.completed span {
+            text-decoration: line-through;
+            color: #888;
+        }
+        .delete-btn {
+            background-color: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 6px 10px;
+            font-size: 12px;
+            cursor: pointer;
+        }
+        .delete-btn:hover {
+            background-color: #c82333;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>My To-Do List</h2>
+    <div class="input-group">
+        <div class="inputs-row">
+            <input type="text" id="taskInput" placeholder="Enter a new task...">
+            <input type="time" id="timeInput">
+        </div>
+        <button class="add-btn" onclick="addTask()">Add Task & Reminder</button>
+    </div>
+    <ul id="taskList"></ul>
+</div>
+
+<!-- Sound element for the alarm -->
+<audio id="alarmSound" src="Majina Yote Mazuri  Jehovah  Dedo D Ft Naomi M (Live) - Hymnos 2 - Hymnos.mp3" preload="auto" loop></audio>
+
+<script>
+    // Request permission to send desktop notifications as soon as the app opens
+    window.onload = function() {
+        if ("Notification" in window) {
+            Notification.requestPermission();
+        }
+    };
+
+    function addTask() {
+        const taskInput = document.getElementById('taskInput');
+        const timeInput = document.getElementById('timeInput');
+         const alarmSound= document.getElementById('alarmSound');
+
+        const taskText = taskInput.value.trim();
+        const reminderTime = timeInput.value;
+         const sound = alarmSound;
+        if (taskText === '') return;
+
+        const list = document.getElementById('taskList');
+        const li = document.createElement('li');
+
+        const infoDiv = document.createElement('div');
+        infoDiv.className = 'task-info';
+
+        const textSpan = document.createElement('span');
+        textSpan.textContent = taskText;
+        textSpan.onclick = function() {
+            li.classList.toggle('completed');
+        };
+        infoDiv.appendChild(textSpan);
+
+        if (reminderTime) {
+            const timeSpan = document.createElement('span');
+            timeSpan.className = 'reminder-time';
+            timeSpan.textContent = `🔔 Desktop Alarm: ${reminderTime}`;
+            infoDiv.appendChild(timeSpan);
+
+            setupAlarm(taskText, reminderTime,sound);
+        }
+
+        const deleteBtn = document.createElement('button');
+        deleteBtn.textContent = 'Delete';
+        deleteBtn.className = 'delete-btn';
+        deleteBtn.onclick = function() {
+            list.removeChild(li);
+        };
+
+        li.appendChild(infoDiv);
+        li.appendChild(deleteBtn);
+        list.appendChild(li);
+
+        taskInput.value = '';
+        timeInput.value = '';
+    }
+
+    function setupAlarm(taskName, targetTime) {
+        const alarmInterval = setInterval(() => {
+            const now = new Date();
+            
+            const currentHours = String(now.getHours()).padStart(2, '0');
+            const currentMinutes = String(now.getMinutes()).padStart(2, '0');
+            const currentTimeString = `${currentHours}:${currentMinutes}`;
+
+            if (currentTimeString === targetTime) {
+                // 1. Play the audio sound
+                const audio = document.getElementById('alarmSound');
+                audio.play();
+
+                // 2. Trigger the native PC background notification
+                if (Notification.permission === "granted") {
+                    const notification = new Notification("⏰ Task Reminder!", {
+                        body: `Time to: ${taskName}`,
+                        requireInteraction: true // Keeps notification on screen until clicked
+                    });
+
+                    // Stop the sound when user clicks the desktop notification banner
+                    notification.onclick = function() {
+                        audio.pause();
+                        audio.currentTime = 4;
+                        window.focus(); // Brings browser tab to front
+                    };
+                } else {
+                    // Fallback to standard alert if permission was denied
+                    alert(`⏰ REMINDER: Time to "${taskName}"!`);
+                    audio.pause();
+                    audio.currentTime = 4;
+                }
+                
+                clearInterval(alarmInterval);
+            }
+        }, 1000);
+    }
+</script>
+
+</body>
+</html>
